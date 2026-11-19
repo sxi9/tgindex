@@ -161,10 +161,19 @@ autocomplete="off"><button>Search</button></form></header>
                     f'{" tagged " + esc(tag) if tag else ""} &middot; '
                     f'{f["total"]} matching before forward dedup</div></div>')
             body = head + "".join(self.render_hit(h) for h in hits)
+        elif not s["messages"]:
+            # An empty index is a setup state, not a failed search. Say so.
+            body = ('<div class="empty"><div class="big">The index is empty</div>'
+                    'Nothing has been crawled yet. This UI only displays what is '
+                    'already indexed &mdash; it never fetches anything itself.'
+                    '<div style="margin-top:22px">Run this, then reload:</div>'
+                    '<div style="margin-top:10px"><code>tgindex quickstart</code></div>'
+                    '<div style="margin-top:18px;font-size:12.5px">That seeds a '
+                    'channel list, crawls it, and reports what it indexed.</div></div>')
         else:
-            body = self.empty("No results",
-                              "Crawl more channels, or broaden the query.")[len("<main><section>"):]
-            body = f'<div class="empty"><div class="big">No results</div>Crawl more channels, or broaden the query.</div>'
+            body = ('<div class="empty"><div class="big">No results</div>'
+                    'Nothing matched that query. Try a broader term, or crawl more '
+                    'channels with <code>tgindex crawl</code>.</div>')
 
         def facet_card(title, items, link, icon):
             if not items:

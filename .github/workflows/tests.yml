@@ -43,3 +43,17 @@ jobs:
         run: |
           python -m tgindex --db ci.db seed durov
           python -m tgindex --db ci.db stats
+
+      - name: Build and install the wheel
+        run: |
+          pip install build
+          python -m build --wheel
+          pip install dist/*.whl
+
+      - name: Verify the installed package
+        run: |
+          cd "$(mktemp -d)"
+          tgindex --help
+          tgindex --db pkg.db seed cyber-seeds
+          tgindex --db pkg.db stats
+          python -c "from tgindex.entities import tlds; assert len(tlds()) > 1000; print('package data ok:', len(tlds()), 'TLDs')"

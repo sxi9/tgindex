@@ -44,152 +44,65 @@ site-restricted web search structurally cannot express:
 Every channel that ever carried a value, when each first posted it, and a ranked
 list of what else travels alongside it — each row itself a further pivot.
 
+## Install
+
+```bash
+pip install git+https://github.com/sxi9/tgindex
+```
+
+That installs a `tgindex` command. Python 3.11+, two dependencies
+(`requests`, `lxml`), and SQLite with FTS5 (standard on Ubuntu, macOS and
+python.org builds).
+
 ## Quickstart
 
 ```bash
-python3 -m tgindex seed seeds.txt
+tgindex quickstart
+```
+
+One command: seeds a channel list, crawls it, and reports what it indexed.
+Takes about 15 seconds and leaves you with a searchable index.
+
+```bash
+tgindex search "security"
 ```
 
 ```bash
-python3 -m tgindex crawl --channels 55 --pages 2 --depth 1 --workers 5 --rps 3
+tgindex serve
 ```
+
+Then open `http://127.0.0.1:8000`.
+
+For the threat vertical, start from the bundled cyber list instead:
 
 ```bash
-python3 -m tgindex search "wallet security" --entities
+tgindex quickstart --seeds cyber-seeds
 ```
 
-```bash
-python3 -m tgindex serve --port 8000
-```
+### Where the index lives
 
-Only dependencies are `requests` and `lxml`. Index is a single SQLite file.
+A single SQLite file. By default:
 
-## Threat intelligence layer
-
-Built for the leaks / ransomware / credential-dump vertical. On ingest every
-message is classified and threat-specific entities are extracted alongside the
-generic ones.
-
-![tgindex threats](docs/screenshot-threats.png)
-
-**Tags** — `ransomware` `data_leak` `credentials` `initial_access` `malware`
-`exploit` `carding` `operator_contact` `darkweb` `actor_post`
-
-```bash
-python3 -m tgindex search --tag credentials --entities
-python3 -m tgindex threats
-```
-
-**Threat entities** (all pivotable like any other):
-
-| type | what |
+| | path |
 |---|---|
-| `ransom_family` | ~70 published ransomware family names |
-| `stealer` / `malware_tool` | infostealers, loaders, C2 frameworks |
-| `leak_host` | mega.nz, gofile.io, anonfiles and friends |
-| `leak_file` | dump filenames (`combo_2025.txt`, `logs_batch_44.zip`) |
-| `tox_id` / `session_id` | operator contact IDs from leak-site posts |
-| `record_count` | largest claimed record/line count in the post |
-| `data_size` | claimed archive size |
-| `cred_lines` | **count** of credential-format lines (see below) |
-| `victim_domain` | affected-org candidates |
+| Linux | `~/.local/share/tgindex/tgindex.db` |
+| macOS | `~/Library/Application Support/tgindex/tgindex.db` |
+| Windows | `%LOCALAPPDATA%\tgindex\tgindex.db` |
 
-**Mention vs actor post.** Security vocabulary is everywhere in legitimate
-reporting, so terms are split into strong and weak. Weak topical words
-(`ransomware`, `breach`, `credential stuffing`) only apply a tag when a
-*structural* signal corroborates them — a leak host, a record count, an
-operator contact ID, a family name, credential-format lines. Two independent
-structural signals mark the message `actor_post`. A vendor blog about LockBit
-is tagged `ransomware`; a LockBit leak post is tagged `actor_post`.
-
-`victim_domain` is likewise gated on structure: on a news article the domains
-present are the reporter's sources, not victims. ~100 press, vendor,
-government and tooling domains are filtered as infrastructure, matched on
-registrable suffix so subdomains are caught too.
-
-### Credential dumps: counts, never values
-
-For combolists, stealer logs and `.txt` dumps the tool records **how many
-lines look like credential pairs** and **which domains are affected**. It never
-captures, stores or displays the credential values themselves.
-
-That is deliberate. The defensive question is "are my users in this dump",
-which the affected-domain list answers. Harvesting the secrets answers a
-different question, and this tool does not do it. Two regression tests assert
-it: `cred_lines` holds only a digit string, and no password text reaches any
-stored entity.
-
-### Watchlist presets
+Override with `--db` or `TGINDEX_DB`. A `tgindex.db` in the working directory
+takes precedence, so a repo checkout keeps behaving as before.
 
 ```bash
-python3 -m tgindex watch preset ransomware
+tgindex --db /var/lib/tgindex/index.db stats
 ```
 
-`ransomware` (~70 families), `stealers`, `malware`, `leak-hosts`,
-`operator-contact`. Each backfills over everything already indexed.
+Global flags go **before** the subcommand.
 
-## Finding seed channels
+### The UI never crawls
 
-Discovery amplifies whatever neighbourhood you seed into, so sourcing the first
-list is the hard part — and it is domain work, not engineering.
-
-```bash
-python3 -m tgindex verify candidates.txt --seed
-python3 -m tgindex leads
-```
-
-`verify` probes handles and reports whether each is a **crawlable public
-channel**, before you spend crawl budget. `leads` ranks the un-crawled queue by
-how threat-relevant the content that referenced each candidate was, so you crawl
-the promising ones first instead of draining the queue alphabetically.
-
-### What this method can and cannot reach
-
-`t.me/s/` serves only channels that are public *and* have web preview enabled.
-Private, invite-only, preview-disabled channels and user accounts return a bare
-contact page — they exist, but this collector cannot see them.
-
-That is not a minor caveat for the threat vertical. Measured against
-[ransomware.live](https://ransomware.live) (424 tracked groups), only 4 publish
-a Telegram handle at all — ransomware is Tor-first — and **0 of those 4 are
-crawlable**. The actor core runs invite-only precisely to avoid this kind of
-collection.
-
-So the reachable surface is:
-
-| tier | reachable via `t.me/s/` |
-|---|---|
-| Actor / market channels (invite-only) | no — needs MTProto with an account |
-| Aggregator and monitoring channels that republish actor content | yes |
-| Research, CERT and press channels | yes |
-
-Aggregators are the useful seed for this collector: they are public because they
-want an audience, and they carry actor content plus links into the ecosystem.
-Reaching the actor tier itself is the Tier-2 MTProto build.
-
-## Theming
-
-The UI is skinned from `tgindex/theme.py` — themes are data, so swapping one
-token dict re-skins every page. Three ship:
-
-| theme | look |
-|---|---|
-| `ink` (default) | neutral charcoal, warm amber accent, Space Grotesk / Inter / JetBrains Mono |
-| `slate` | cool blue-grey, cyan accent |
-| `terminal` | phosphor green on near-black, monospace throughout |
-
-```bash
-python3 -m tgindex serve --theme terminal
-```
-
-`web.py` emits structure and never names a colour, so adding a theme is copying
-a `Theme(...)` block, changing the tokens, and registering it in `THEMES`.
-
-Assets in `tgindex/assets.py`: the mark is an original glyph drawn from
-primitives, and icons are [Lucide](https://lucide.dev) (ISC licence), vendored
-as an inline sprite so the UI has no CDN or runtime dependency. Icons are
-referenced by semantic key (`theme.icon("alerts")`), so a theme can swap icon
-sets without touching `web.py`.
+`serve` only displays what is already indexed; it never fetches anything
+itself. Starting it against an empty index prints the fix, and the page says
+so rather than showing a bare "no results".
 
 ## Commands
 

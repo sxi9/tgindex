@@ -12,9 +12,8 @@ from pathlib import Path
 from . import query as Q
 from .crawl import poll_heads, run
 from .fetch import Fetcher
+from .paths import bundled, default_db
 from .store import Store
-
-DEFAULT_DB = "tgindex.db"
 
 
 def _ts(v):
@@ -41,17 +40,59 @@ def _since(spec):
     return int(spec)
 
 
-def cmd_seed(a, st):
+def _read_names(items):
+    """Accept handles, a path to a list, or a bundled list name."""
     names = []
-    for item in a.names:
+    for item in items:
         p = Path(item)
+        if not p.exists():
+            b = bundled(item if item.endswith(".txt") else item + ".txt")
+            if b.exists():
+                p = b
         if p.exists():
-            names += [ln.strip() for ln in p.read_text().splitlines()
+            names += [ln.strip().lstrip("@") for ln in p.read_text().splitlines()
                       if ln.strip() and not ln.startswith("#")]
         else:
-            names.append(item)
+            names.append(item.lstrip("@"))
+    return names
+
+
+def cmd_seed(a, st):
+    names = _read_names(a.names)
     added = sum(st.add_channel(n, via="seed", depth=0) for n in names)
     print(f"seeded {added} new channels ({len(names)} given)")
+
+
+def cmd_quickstart(a, st):
+    """Seed, crawl and report - one command from empty to searchable."""
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    have = st.stats()["messages"]
+    if have and not a.force:
+        print(f"index already has {have:,} messages at {st.path}")
+        print("run with --force to crawl more, or just: tgindex serve")
+        return
+
+    names = _read_names([a.seeds])
+    added = sum(st.add_channel(n, via="seed", depth=0) for n in names)
+    print(f"seeded {added} channel(s) from {a.seeds}\n")
+
+    f = Fetcher(rps=a.rps)
+    t0 = time.time()
+    totals = run(st, f, max_channels=a.channels, max_pages=a.pages,
+                 max_depth=a.depth, workers=a.workers)
+    s = st.stats()
+    print(f"\n{'-'*62}")
+    print(f"crawled {totals['channels']} channels in {time.time()-t0:.0f}s")
+    print(f"  messages indexed   {s['messages']:,}")
+    print(f"  entities extracted {s['entities']:,}")
+    print(f"  channels queued    {s['channels_pending']:,} (crawl again to go deeper)")
+    print(f"  index file         {st.path}")
+    if not s["messages"]:
+        print("\nNo messages indexed. Check outbound access to https://t.me/")
+        return
+    print(f"\nReady. Try:")
+    print(f"  tgindex search \"security\"")
+    print(f"  tgindex serve          # then open http://127.0.0.1:8000")
 
 
 def cmd_crawl(a, st):
@@ -219,14 +260,7 @@ def cmd_coord(a, st):
 
 def cmd_verify(a, st):
     """Check candidate handles before spending crawl budget on them."""
-    names = []
-    for item in a.names:
-        p = Path(item)
-        if p.exists():
-            names += [ln.strip() for ln in p.read_text().splitlines()
-                      if ln.strip() and not ln.startswith("#")]
-        else:
-            names.append(item)
+    names = _read_names(a.names)
     from .crawl import verify
     rows = verify(Fetcher(rps=a.rps), names, workers=a.workers)
     print(f"{'handle':<26} {'status':<20} {'subs':>8}  title")
@@ -305,13 +339,31 @@ def cmd_threats(a, st):
 
 def cmd_serve(a, st):
     from .web import serve
+    if not st.stats()["messages"]:
+        print(f"The index at {st.path} is empty - the UI only displays what has")
+        print("already been crawled; it never fetches anything itself.\n")
+        print("Populate it first:\n  tgindex quickstart\n")
+        print("Starting anyway so you can see the UI.\n")
     serve(st, host=a.host, port=a.port, theme=a.theme)
 
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="tgindex", description="Telegram public-channel search and monitoring")
-    p.add_argument("--db", default=DEFAULT_DB)
+    p.add_argument("--db", default=None,
+                   help="index file (default: %s)" % default_db())
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("quickstart",
+                       help="seed + crawl + report: go from empty to searchable")
+    s.add_argument("--seeds", default="seeds.txt",
+                   help="file, bundled list name (seeds, cyber-seeds), default seeds.txt")
+    s.add_argument("--channels", type=int, default=40)
+    s.add_argument("--pages", type=int, default=3)
+    s.add_argument("--depth", type=int, default=1)
+    s.add_argument("--workers", type=int, default=5)
+    s.add_argument("--rps", type=float, default=2.0)
+    s.add_argument("--force", action="store_true", help="crawl even if the index has data")
+    s.set_defaults(fn=cmd_quickstart)
 
     s = sub.add_parser("seed", help="add channels to the crawl queue")
     s.add_argument("names", nargs="+", help="usernames or a file of usernames")
@@ -398,7 +450,7 @@ def main(argv=None):
     s.set_defaults(fn=cmd_serve)
 
     a = p.parse_args(argv)
-    st = Store(a.db)
+    st = Store(a.db or default_db())
     try:
         a.fn(a, st)
     finally:

@@ -1,0 +1,12 @@
+# Seed channels. Swap these for your target vertical - this list is only
+# a demonstration set of large, unambiguously public channels.
+durov
+telegram
+cointelegraph
+toncoin
+botnews
+contest
+designers
+bitcoin_industry
+forbes
+reuters

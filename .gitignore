@@ -13,3 +13,7 @@ venv/
 # packaging / local
 *.tar.gz
 .DS_Store
+
+# build artifacts
+dist/
+build/
