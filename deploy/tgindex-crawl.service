@@ -1,0 +1,16 @@
+[Unit]
+Description=tgindex backfill crawl (drains the discovery queue)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=tgindex
+WorkingDirectory=/opt/tgindex
+ExecStart=/opt/tgindex/.venv/bin/python -m tgindex --db /var/lib/tgindex/tgindex.db crawl --channels 200 --pages 8 --depth 2 --workers 4 --rps 2
+Nice=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tgindex

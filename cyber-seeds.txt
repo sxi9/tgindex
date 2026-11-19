@@ -1,0 +1,17 @@
+# Candidate public cybersecurity channels. Unreachable ones are marked
+# blocked automatically; snowball discovery finds the rest of the ecosystem.
+vxunderground
+cybersecuritynews
+thehackernews
+cvenotify
+malwarenews
+secharvester
+infosec
+cybersec
+databreaches
+ransomwarenews
+threatintel
+darkwebinformer
+hackernews
+cybernews
+malwarehunterteam

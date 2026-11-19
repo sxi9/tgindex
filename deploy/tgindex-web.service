@@ -1,0 +1,21 @@
+[Unit]
+Description=tgindex web UI
+After=network.target
+
+[Service]
+Type=simple
+User=tgindex
+WorkingDirectory=/opt/tgindex
+# Binds loopback only. The UI has NO authentication - put a reverse proxy
+# with auth in front of it, or keep it on localhost and reach it via SSH tunnel.
+ExecStart=/opt/tgindex/.venv/bin/python -m tgindex --db /var/lib/tgindex/tgindex.db serve --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tgindex
+
+[Install]
+WantedBy=multi-user.target

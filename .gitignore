@@ -1,0 +1,15 @@
+# indexes
+*.db
+*.db-wal
+*.db-shm
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# packaging / local
+*.tar.gz
+.DS_Store

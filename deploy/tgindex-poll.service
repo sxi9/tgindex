@@ -1,0 +1,17 @@
+[Unit]
+Description=tgindex head poll (pick up new posts)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=tgindex
+WorkingDirectory=/opt/tgindex
+ExecStart=/opt/tgindex/.venv/bin/python -m tgindex --db /var/lib/tgindex/tgindex.db poll --limit 200 --rps 2
+Nice=10
+# hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tgindex
