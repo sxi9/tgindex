@@ -14,7 +14,8 @@ from . import query as Q
 from . import theme as T
 from .store import Store
 
-NAV = [("/", "Search", "search"), ("/threats", "Threats", "shield"),
+NAV = [("/", "Search", "search"), ("/live", "Live", "scan"),
+       ("/threats", "Threats", "shield"),
        ("/alerts", "Alerts", "alerts"), ("/entities", "Entities", "entities"),
        ("/channels", "Channels", "channels"), ("/coord", "Coordination", "coord")]
 
@@ -89,7 +90,7 @@ autocomplete="off"><button>Search</button></form></header>
             fn = {"/": self.view_search, "/pivot": self.view_pivot,
                   "/alerts": self.view_alerts, "/entities": self.view_entities,
                   "/channels": self.view_channels, "/coord": self.view_coord,
-                  "/threats": self.view_threats,
+                  "/threats": self.view_threats, "/live": self.view_live,
                   "/api/search": self.api_search}.get(u.path)
             if fn is None:
                 self._send(self.page(u.path, self.empty("Not found", "")), 404)
@@ -320,6 +321,55 @@ autocomplete="off"><button>Search</button></form></header>
                             'several channels.</span></div>', "scan")
                 + '</aside></main>')
         self._send(self.page(path, body, title="Coordination - tgindex"))
+
+    def view_live(self, path, p):
+        """Live per-channel search, straight against Telegram, no index."""
+        ch = (p.get("ch") or "").strip().lstrip("@")
+        q = (p.get("q") or "").strip()
+        form = (f'<form method="get" action="/live" style="display:flex;gap:9px;'
+                f'flex-wrap:wrap;margin-bottom:6px">'
+                f'<input type="text" name="ch" value="{esc(ch)}" placeholder="channel, e.g. durov" '
+                f'style="max-width:240px" required>'
+                f'<input type="text" name="q" value="{esc(q)}" placeholder="search term" required>'
+                f'<button>Search live</button></form>'
+                f'<div class="meta"><span>Queries Telegram directly and indexes '
+                f'nothing. Telegram only supports search inside a channel you name '
+                f'&mdash; there is no cross-channel endpoint, which is what the '
+                f'crawled index is for.</span></div>')
+
+        body_rows = ""
+        if ch and q:
+            from .crawl import live_search
+            from .fetch import Fetcher
+            res = live_search(Fetcher(rps=2.0), ch, q, max_pages=2)
+            if res.error:
+                body_rows = (f'<div class="empty"><div class="big">Could not reach @{esc(ch)}</div>'
+                             f'{esc(res.error)[:160]}</div>')
+            elif not res.messages:
+                body_rows = (f'<div class="empty"><div class="big">No live matches</div>'
+                             f'Nothing in @{esc(ch)} matches {esc(q)}. The channel may also '
+                             f'be private or have no public preview.</div>')
+            else:
+                hits = []
+                for m in res.messages[:40]:
+                    txt = esc(" ".join((m.text or "").split())[:320])
+                    hits.append(
+                        f'<div class="hit"><div class="title">'
+                        f'{self.theme.icon("next", 14, "var(--support)")}'
+                        f'<a href="{esc(m.url)}" target="_blank" rel="noopener">'
+                        f'@{esc(m.channel)}/{m.msg_id}</a></div>'
+                        f'<div class="meta"><span>{esc((m.date or "")[:16])}</span>'
+                        f'<span>{fmt_n(m.views)} views</span></div>'
+                        f'<div class="snip">{txt}</div></div>')
+                body_rows = (f'<div class="pagehead"><div class="sub">'
+                             f'{len(res.messages)} live match(es) for {esc(q)} in '
+                             f'@{esc(ch)} &middot; not indexed</div></div>' + "".join(hits))
+
+        body = (f'<main class="wide"><section><div class="pagehead">'
+                f'<h1>Live channel search</h1></div>'
+                f'{self.card("Query a channel directly", form, "scan")}'
+                f'{body_rows}</section></main>')
+        self._send(self.page(path, body, title="Live - tgindex"))
 
     def view_threats(self, path, p):
         r = Q.threats(self.store, limit=20)

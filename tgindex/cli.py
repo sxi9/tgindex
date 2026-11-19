@@ -258,6 +258,28 @@ def cmd_coord(a, st):
         print(f"  @{r['c1']:<25} @{r['c2']:<25} {r['shared']:>6} {r['avg_gap']:>7.0f}s")
 
 
+def cmd_live(a, st):
+    """Search a channel live via Telegram's own in-channel search."""
+    from .crawl import live_search
+    ch = a.channel.lstrip("@")
+    res = live_search(Fetcher(rps=a.rps), ch, a.query, max_pages=a.pages)
+    if res.error:
+        print(f"@{ch}: {res.error}")
+        return
+    if not res.messages:
+        print(f"@{ch}: no matches for {a.query!r} "
+              f"(channel may be private, or have no public preview)")
+        return
+    print(f"{len(res.messages)} live match(es) for {a.query!r} in @{ch}\n")
+    for m in res.messages[:a.limit]:
+        print(f"  {m.date or '-'}  views {_n(m.views)}  {m.url}")
+        txt = " ".join((m.text or "").split())
+        print(f"    {txt[:200]}\n")
+    if a.index:
+        out = st.ingest(res.messages)
+        print(f"indexed: {out['new']} new message(s), {out['entities']} entities")
+
+
 def cmd_verify(a, st):
     """Check candidate handles before spending crawl budget on them."""
     names = _read_names(a.names)
@@ -428,6 +450,15 @@ def main(argv=None):
     s = sub.add_parser("coord", help="channels repeatedly posting identical content")
     s.add_argument("--window", type=int, default=300); s.add_argument("--min-shared", type=int, default=2, dest="min_shared")
     s.set_defaults(fn=cmd_coord)
+
+    s = sub.add_parser("live", help="search ONE channel live, no index needed")
+    s.add_argument("channel")
+    s.add_argument("query")
+    s.add_argument("--pages", type=int, default=2)
+    s.add_argument("--limit", type=int, default=10)
+    s.add_argument("--rps", type=float, default=2.0)
+    s.add_argument("--index", action="store_true", help="also add hits to the index")
+    s.set_defaults(fn=cmd_live)
 
     s = sub.add_parser("verify", help="check handles are crawlable public channels")
     s.add_argument("names", nargs="+", help="usernames or a file of usernames")

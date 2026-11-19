@@ -74,6 +74,44 @@ def crawl_channel(fetcher: Fetcher, username: str, *, max_pages: int = 3,
     return res
 
 
+def live_search(fetcher: Fetcher, username: str, query: str, *,
+                max_pages: int = 3) -> ChannelResult:
+    """Search one channel's history live, without indexing anything.
+
+    Telegram serves in-channel search at t.me/s/<channel>?q=<term>. It only
+    works for a channel you name - there is no cross-channel search endpoint,
+    which is why the index exists. This is the live escape hatch for the case
+    where you already know which channel to look in.
+    """
+    res = ChannelResult(username=username)
+    before = None
+    seen: set[int] = set()
+    for page in range(max_pages):
+        try:
+            resp = fetcher.channel_page(username, before=before, q=query)
+        except Blocked as exc:
+            if page == 0:
+                res.error = str(exc)
+            break
+        except Exception as exc:                     # noqa: BLE001
+            res.error = f"{type(exc).__name__}: {exc}"
+            break
+        try:
+            info, msgs, nxt = parse_page(resp.text)
+        except Exception as exc:                     # noqa: BLE001
+            res.error = f"parse failed: {exc}"
+            break
+        if res.info is None:
+            res.info = info
+        res.pages += 1
+        res.messages.extend(msgs)
+        if nxt is None or nxt in seen:
+            break
+        seen.add(nxt)
+        before = nxt
+    return res
+
+
 def verify(fetcher: Fetcher, usernames: list[str], workers: int = 4) -> list[dict]:
     """Check whether handles are crawlable public channels.
 

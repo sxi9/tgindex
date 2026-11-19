@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>tgindex — Telegram search</title>
+<meta name="description" content="Search public Telegram channels, groups and bots.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://cse.google.com">
+<style>
+:root{
+  --bg:#0E1012; --bg-deep:#08090A; --panel:#15181B;
+  --line:rgba(255,255,255,.085); --line-strong:rgba(255,255,255,.16);
+  --fg:#E8E6E3; --dim:#8B9196; --accent:#E9A23B;
+  --accent-soft:rgba(233,162,59,.15); --support:#5FA3A0; --on-accent:#15110A;
+  --font-display:'Space Grotesk','Inter',system-ui,sans-serif;
+  --font-body:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);
+font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+min-height:100vh;display:flex;flex-direction:column}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+
+header{background:var(--bg-deep);border-bottom:1px solid var(--line);
+padding:14px 20px;display:flex;align-items:center;gap:11px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{width:27px;height:27px;color:var(--accent)}
+.wm{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:-.025em}
+.wm i{font-style:normal;color:var(--accent)}
+.tag{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);
+border-left:1px solid var(--line-strong);padding-left:11px}
+
+main{flex:1;max-width:860px;width:100%;margin:0 auto;padding:40px 20px 60px}
+.hero{text-align:center;margin-bottom:30px}
+h1{font-family:var(--font-display);font-size:38px;font-weight:700;margin:0 0 10px;
+letter-spacing:-.03em;line-height:1.1}
+h1 span{color:var(--accent)}
+.sub{color:var(--dim);font-size:15px;max-width:540px;margin:0 auto}
+@media(max-width:600px){h1{font-size:28px}main{padding:28px 16px 48px}}
+
+.searchbox{margin:30px 0 10px}
+.gsc-control-cse{background:transparent!important;border:0!important;padding:0!important;
+font-family:var(--font-body)!important}
+.gsc-search-box,.gsc-input-box{background:var(--panel)!important;
+border:1px solid var(--line-strong)!important;border-radius:10px!important;
+padding:4px 6px!important}
+.gsc-input-box{box-shadow:none!important}
+table.gsc-search-box td{vertical-align:middle!important}
+input.gsc-input{background:transparent!important;color:var(--fg)!important;
+font-family:var(--font-body)!important;font-size:15px!important;padding:8px 6px!important}
+.gsc-search-button-v2{background:var(--accent)!important;border:0!important;
+border-radius:9px!important;padding:12px 20px!important;margin-left:8px!important}
+.gsc-search-button-v2 svg{fill:var(--on-accent)!important}
+.gsc-result{background:transparent!important;border:0!important;
+border-bottom:1px solid var(--line)!important;padding:16px 0!important}
+.gsc-webResult.gsc-result:hover{border-color:var(--line-strong)!important}
+.gs-title,.gs-title b{color:var(--accent)!important;font-family:var(--font-mono)!important;
+font-size:15px!important;text-decoration:none!important}
+.gs-snippet{color:var(--fg)!important;font-size:14.5px!important}
+.gs-snippet b{background:var(--accent-soft);color:var(--accent);padding:0 3px;border-radius:3px}
+.gsc-url-top,.gs-visibleUrl{color:var(--support)!important;
+font-family:var(--font-mono)!important;font-size:12px!important}
+.gsc-above-wrapper-area{border-bottom:1px solid var(--line)!important;padding-bottom:8px!important}
+.gsc-result-info{color:var(--dim)!important;font-size:12.5px!important;padding-left:0!important}
+.gsc-orderby-label,.gsc-selected-option-container{color:var(--dim)!important}
+.gsc-cursor-page{color:var(--dim)!important;background:var(--panel)!important;
+border:1px solid var(--line)!important;border-radius:6px!important;padding:4px 10px!important;
+margin-right:5px!important;font-family:var(--font-mono)!important}
+.gsc-cursor-current-page{color:var(--on-accent)!important;background:var(--accent)!important;
+border-color:var(--accent)!important}
+.gsc-adBlock,.gcsc-more-maybe-branding-root{display:none!important}
+.gsc-table-result,.gsc-thumbnail-inside,.gsc-url-top{padding-left:0!important}
+
+.setup{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+padding:20px 22px;margin-top:28px}
+.setup h2{font-family:var(--font-display);font-size:16px;margin:0 0 12px;font-weight:700}
+.setup ol{margin:0;padding-left:20px;color:var(--dim);font-size:14px}
+.setup li{margin-bottom:8px}
+.setup code{background:var(--bg-deep);padding:2px 6px;border-radius:5px;
+font-family:var(--font-mono);font-size:12.5px;color:var(--accent)}
+.hidden{display:none}
+.chips{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:20px;
+padding:5px 13px;font-size:12.5px;color:var(--dim);cursor:pointer;
+font-family:var(--font-mono)}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+footer{border-top:1px solid var(--line);padding:18px 20px;text-align:center;
+color:var(--dim);font-size:12.5px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.4" y="1.4" width="29.2" height="29.2" rx="8.5" stroke="currentColor" stroke-width="1.7" opacity=".38"/>
+      <path d="M10 21.5 L16 10.5 L22 21.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+      <circle cx="16" cy="10.5" r="3.1" fill="currentColor"/>
+      <circle cx="10" cy="21.5" r="2.4" fill="currentColor" opacity=".72"/>
+      <circle cx="22" cy="21.5" r="2.4" fill="currentColor" opacity=".72"/>
+    </svg>
+    <span class="wm"><i>tg</i>index</span>
+  </div>
+  <span class="tag">Telegram search</span>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Search public <span>Telegram</span></h1>
+    <p class="sub">Channels, groups and bots. Type anything — no setup, no crawling.
+    Results come from indexed <code style="font-family:var(--font-mono);font-size:13px">t.me</code> preview pages.</p>
+  </div>
+
+  <div class="searchbox">
+    <div class="gcse-searchresults-only" data-gname="tg"></div>
+  </div>
+
+  <div class="chips" id="examples">
+    <span class="chip">crypto</span><span class="chip">news</span>
+    <span class="chip">python</span><span class="chip">security</span>
+    <span class="chip">music</span><span class="chip">movies</span>
+  </div>
+
+  <div class="setup" id="setup">
+    <h2>One-time setup (about five minutes, free)</h2>
+    <ol>
+      <li>Go to <a href="https://programmablesearchengine.google.com/controlpanel/create" target="_blank" rel="noopener">Programmable Search Engine</a> and create one.</li>
+      <li>Under <b>Sites to search</b>, add <code>t.me/*</code> — nothing else.</li>
+      <li>Turn <b>Image search</b> off and <b>Search the entire web</b> off.</li>
+      <li>Copy the <b>Search engine ID</b> (the <code>cx</code> value).</li>
+      <li>Paste it into <code>CX</code> near the bottom of this file, then reload.</li>
+    </ol>
+  </div>
+</main>
+
+<footer>
+  tgindex &middot; for your own crawled index with entity pivots and alerting, see
+  <a href="https://github.com/sxi9/tgindex">the CLI</a>
+</footer>
+
+<script>
+// Paste your Programmable Search Engine ID here.
+const CX = "";
+
+(function () {
+  const setup = document.getElementById("setup");
+  if (!CX) { setup.classList.remove("hidden"); return; }
+  setup.classList.add("hidden");
+
+  window.__gcse = {
+    parsetags: "explicit",
+    initializationCallback: function () {
+      const el = google.search.cse.element.getElement("tg");
+      const params = new URLSearchParams(location.search);
+      const q = params.get("q");
+      if (q) el.execute(q);
+      document.querySelectorAll("#examples .chip").forEach(function (c) {
+        c.addEventListener("click", function () {
+          el.execute(c.textContent);
+          document.getElementById("examples").classList.add("hidden");
+        });
+      });
+    }
+  };
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = "https://cse.google.com/cse.js?cx=" + encodeURIComponent(CX);
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>

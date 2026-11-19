@@ -44,7 +44,46 @@ site-restricted web search structurally cannot express:
 Every channel that ever carried a value, when each first posted it, and a ranked
 list of what else travels alongside it — each row itself a further pivot.
 
+## Two things in this repo
+
+They answer different questions, and you probably want both.
+
+| | `web/index.html` | the `tgindex` CLI |
+|---|---|---|
+| What | an instant search page | your own crawler and index |
+| Setup | ~5 min, no crawling | install, then crawl |
+| Coverage | everything Google indexed on `t.me` | only channels you crawl |
+| Freshness | Google's recrawl, days to weeks | minutes |
+| Filter by date, views, media | no | yes |
+| Entity pivots, spread, alerts | no | yes |
+
+Start with the page if you want to type a word and get results today. Use the
+CLI when you need structure, freshness, or monitoring.
+
+## The instant search page
+
+`web/index.html` is a self-contained page — no build step, no server. It uses a
+Google Programmable Search Engine scoped to `t.me/*`, which is exactly how sites
+like `telegramsearchengine.com` work.
+
+1. Create one at [programmablesearchengine.google.com](https://programmablesearchengine.google.com/controlpanel/create)
+2. Under **Sites to search** add `t.me/*`, nothing else
+3. Turn off *Image search* and *Search the entire web*
+4. Copy the **Search engine ID** (`cx`)
+5. Paste it into `const CX = "";` at the bottom of `web/index.html`
+
+Open the file, or host it anywhere static — GitHub Pages serves it free.
+
+Until a `cx` is set the page shows those setup steps instead of a broken search
+box.
+
+**What you are trading away:** you inherit Google's coverage and refresh rate,
+you cannot filter by date, views or media type, and there are no entity pivots,
+no forward dedup and no alerting. That is the whole reason the CLI exists.
+
 ## Install
+
+
 
 ```bash
 pip install git+https://github.com/sxi9/tgindex
