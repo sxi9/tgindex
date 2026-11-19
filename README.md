@@ -1,10 +1,22 @@
 # tgindex
 
-Phase-one Telegram public-channel search and monitoring. Own crawl, structured
-index, validated entity extraction, forward dedup, and watchlist alerting.
+[![tests](https://github.com/sxi9/tgindex/actions/workflows/tests.yml/badge.svg)](https://github.com/sxi9/tgindex/actions/workflows/tests.yml)
+[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![dependencies](https://img.shields.io/badge/dependencies-2-lightgrey)](requirements.txt)
+
+Telegram public-channel search and monitoring. Own crawl, structured index,
+validated entity extraction, forward dedup, watchlist alerting, and a threat
+layer for leaks, ransomware and credential dumps.
 
 Built as an evaluation prototype: run it against your own channel list and judge
 result quality before committing to the production build.
+
+![tgindex search](docs/screenshot-search.png)
+
+Search blends BM25 with recency and reach, collapses forwards to the origin post
+(reporting spread separately), and attaches every extracted entity as a chip you
+can pivot on.
 
 ## Why this exists
 
@@ -24,6 +36,13 @@ site-restricted web search structurally cannot express:
 | "every channel that posted this wallet" | no | yes (`pivot`) |
 | Forward dedup and spread | no | yes (`spread`) |
 | Real-time watchlist alerts | no | yes (`watch`) |
+
+### Pivot
+
+![tgindex pivot](docs/screenshot-pivot.png)
+
+Every channel that ever carried a value, when each first posted it, and a ranked
+list of what else travels alongside it — each row itself a further pivot.
 
 ## Quickstart
 
@@ -50,6 +69,8 @@ Only dependencies are `requests` and `lxml`. Index is a single SQLite file.
 Built for the leaks / ransomware / credential-dump vertical. On ingest every
 message is classified and threat-specific entities are extracted alongside the
 generic ones.
+
+![tgindex threats](docs/screenshot-threats.png)
 
 **Tags** — `ransomware` `data_leak` `credentials` `initial_access` `malware`
 `exploit` `carding` `operator_contact` `darkweb` `actor_post`
@@ -299,6 +320,7 @@ after.
 python3 tests.py
 ```
 
-52 assertions: Keccak-256 and base58check/bech32/EIP-55/Luhn/IBAN against known
-vectors, false-positive rejection, dedup and spread, and case-insensitive
-watchlist matching.
+75 assertions: Keccak-256 and base58check/bech32/EIP-55/Luhn/IBAN against known
+vectors, false-positive rejection, dedup and spread, case-insensitive watchlist
+matching, threat classification (mention vs actor post), and an assertion that
+no credential value reaches any stored entity.
